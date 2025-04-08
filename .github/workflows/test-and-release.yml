@@ -96,11 +96,11 @@ jobs:
           # Extract version components
           MAJOR=$(echo $LATEST_TAG | cut -d. -f1 | sed 's/v//')
           MINOR=$(echo $LATEST_TAG | cut -d. -f2)
-          PATCH=$(echo $LATEST_TAG | cut -d. -f3)
+          PATCH=$(echo $LATEST_TAG | cut -d. -f3 | sed 's/-.*$//')  # Remove any existing suffix
 
           # Increment patch version
           NEW_PATCH=$((PATCH + 1))
-          NEW_VERSION="v$MAJOR.$MINOR.$NEW_PATCH"
+          NEW_VERSION="v$MAJOR.$MINOR.$NEW_PATCH-alpha"
 
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version will be: $NEW_VERSION"
@@ -128,7 +128,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.get_version.outputs.new_version }}
-          release_name: Release ${{ steps.get_version.outputs.new_version }}
+          release_name: Alpha Release ${{ steps.get_version.outputs.new_version }}
           body: ${{ env.RELEASE_NOTES }}
           draft: false
-          prerelease: false
+          prerelease: true
