@@ -12,7 +12,7 @@ jspm_packages/
 .eslintcache
 
 # Build output
-dist/
+# dist/ - We need to include this for GitHub Actions
 lib/
 build/
 
