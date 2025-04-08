@@ -1,111 +1,73 @@
 # Clarity Smart Contract Verification GitHub Action
 
-A GitHub Action for formal verification of Clarity smart contracts using ESBMC, focusing only on modified functions in pull requests.
+This GitHub Action formally verifies Clarity smart contracts using ESBMC, focusing only on modified functions in pull requests.
 
 ## Features
 
-- **Changed Function Detection**: Analyzes git diffs to identify modified Clarity functions
-- **Targeted Verification**: Only verifies functions that have been modified
-- **SARIF Reporting**: Generates SARIF reports for GitHub Code Scanning
-- **PR Comments**: Posts verification results as comments on pull requests
-- **Customizable Workflow**: Configurable inputs for different verification needs
-- **Containerized Execution**: Uses Docker containers for consistent verification environments
+- Automatically detects changed functions in Clarity contracts
+- Runs formal verification on modified functions only
+- Generates SARIF reports for GitHub Code Scanning
+- Posts verification results as PR comments
 
 ## Usage
 
 Add the following to your GitHub workflow file:
 
 ```yaml
-- name: Verify Clarity Contracts
-  uses: companyx/clarity-verify-action@v1
-  with:
-    contracts_dir: "./contracts"
-    fail_on_issue: "true"
-    github_token: ${{ secrets.GITHUB_TOKEN }}
+name: Verify Clarity Contracts
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "**.clar"
 
-- name: Upload SARIF to GitHub Code Scanning
-  uses: github/codeql-action/upload-sarif@v2
-  if: always() # Run even if verification fails
-  with:
-    sarif_file: ${{ steps.verify.outputs.sarif_report }}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required to get full history for detecting changes
+
+      - name: Verify Clarity Contracts
+        uses: proj-clarity-esbmc/clara_github_action@v0.1.0-alpha
+        with:
+          contracts_dir: "./contracts"
+          fail_on_issue: "true"
+
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v2
+        if: always() # Run even if verification fails
+        with:
+          sarif_file: ${{ steps.verify.outputs.sarif_report }}
 ```
 
 ## Inputs
 
-| Input                | Description                                                                                                                                                                                                                                                                              | Default      | Required |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | -------- |
-| `contracts_dir`      | The path to the directory (or directories, separated by commas or newlines) containing your Clarity smart contract files.                                                                                                                                                                | `./`         | No       |
-| `esbmc_flags`        | Additional command-line flags to be passed directly to the ESBMC executable. This allows users to customize the verification process (e.g., setting timeouts, enabling specific analyses).                                                                                               | `--verbose`  | No       |
-| `excluded_contracts` | A comma-separated list or newline-separated list of file paths or glob patterns to explicitly exclude certain Clarity contracts from the verification process. This can be useful for utility contracts or contracts known to have issues that are not the focus of the current changes. | ``           | No       |
-| `fail_on_issue`      | A boolean value indicating whether the GitHub Actions workflow should fail if any verification issues are reported by ESBMC. Setting this to `true` is recommended for blocking PR merges when potential vulnerabilities are found.                                                      | `true`       | No       |
-| `base_ref`           | (Optional, automatically provided in `pull_request` context) The Git reference of the base branch to compare against for identifying changes. Users might need to explicitly provide this in `push` events if they want to compare against a specific older commit.                      | (Contextual) | No       |
-| `head_ref`           | (Optional, automatically provided in `pull_request` context) The Git reference of the head branch (the changes). Automatically provided in `pull_request` events. May need to be the current commit SHA in `push` events.                                                                | (Contextual) | No       |
-| `container_version`  | Specific container version/digest to use.                                                                                                                                                                                                                                                | v1.0.0       | No       |
+| Input                  | Description                                      | Required | Default                     |
+| ---------------------- | ------------------------------------------------ | -------- | --------------------------- |
+| `contracts_dir`        | Directory containing Clarity contracts           | No       | `./`                        |
+| `esbmc_flags`          | Additional flags to pass to ESBMC                | No       | `--verbose`                 |
+| `excluded_contracts`   | Contracts to exclude from verification           | No       | ``                          |
+| `fail_on_issue`        | Whether to fail the workflow if issues are found | No       | `true`                      |
+| `base_ref`             | Base Git reference for comparison                | No       | Auto-detected in PR context |
+| `head_ref`             | Head Git reference for comparison                | No       | Auto-detected in PR context |
+| `container_version`    | Version of the container images to use           | No       | `latest`                    |
+| `ast_container_repo`   | Container repository for AST generator           | No       | `saad963/esbmc-container`   |
+| `esbmc_container_repo` | Container repository for ESBMC                   | No       | `saad963/esbmc-container`   |
 
 ## Outputs
 
-| Output                | Description                                                                                                                                                                          | Format          |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- |
-| `sarif_report`        | The file path to the generated SARIF report containing the formal verification results. This can be used by subsequent steps in the workflow (e.g., uploading to a storage service). | `results.sarif` |
-| `verification_status` | A string indicating the overall status of the verification (e.g., "success", "failure", "no_changes"). This can be used for conditional logic in subsequent workflow steps.          | String          |
+| Output                | Description                                                |
+| --------------------- | ---------------------------------------------------------- |
+| `sarif_report`        | Path to the generated SARIF report                         |
+| `verification_status` | Overall verification status (success, failure, no_changes) |
 
-## Testing Locally
+## Requirements
 
-You can test this GitHub Action locally using the provided test script and the [Act](https://github.com/nektos/act) tool.
-
-### Prerequisites
-
-1. Install Act:
-
-   ```bash
-   # macOS
-   brew install act
-   ```
-
-2. Make sure Docker is running on your system.
-
-### Testing Steps
-
-1. Clone this repository:
-
-   ```bash
-   git clone https://github.com/companyx/clarity-verify-action.git
-   cd clarity-verify-action
-   ```
-
-2. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-3. Run the test script:
-
-   ```bash
-   node test-local.js
-   ```
-
-   This script will:
-
-   - Check if Act is installed
-   - Modify the runner.ts file for testing
-   - Build the action
-   - Run Act to test the action
-   - Restore the original runner.ts file
-
-4. Alternatively, you can run the tests manually:
-
-   ```bash
-   # Build the mock Docker containers
-   docker build -t ghcr.io/companyx/clarity-ast-generator:v1.0.0 -f Dockerfile.mock-ast .
-   docker build -t ghcr.io/companyx/clarity-esbmc:v1.0.0 -f Dockerfile.mock-esbmc .
-
-   # Build the action
-   npm run all
-
-   # Run Act
-   act push -v
-   ```
+- GitHub Actions runner with Docker support
+- Access to the container images (public Docker Hub images)
 
 ## License
 

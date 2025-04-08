@@ -1,10 +1,6 @@
-name: Monorepo Clarity Verification
+name: Verify Clarity Contracts in Monorepo
 on:
   pull_request:
-    branches: [main]
-    paths:
-      - "packages/*/contracts/**/*.clar"
-  push:
     branches: [main]
     paths:
       - "packages/*/contracts/**/*.clar"
@@ -12,63 +8,51 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        package: ["core", "defi", "nft"]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Required to get full history for detecting changes
 
-      # Check if the package has Clarity contracts that were modified
-      - name: Check for modified Clarity contracts
-        id: check-changes
+      # Find all packages with Clarity contracts
+      - name: Find packages with Clarity contracts
+        id: find-packages
         run: |
-          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "packages/${{ matrix.package }}/contracts/.*\.clar$"; then
-            echo "changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "changes=false" >> $GITHUB_OUTPUT
-          fi
+          PACKAGES=$(find packages -type d -name "contracts" -path "*/packages/*/contracts" | cut -d'/' -f2 | sort | uniq | tr '\n' ' ')
+          echo "Found packages with Clarity contracts: $PACKAGES"
+          echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
 
-      # Only run verification if there are changes in this package
+      # Run verification for each package
       - name: Verify Clarity Contracts
         id: verify
-        if: steps.check-changes.outputs.changes == 'true'
-        uses: companyx/clarity-verify-action@v1
+        uses: proj-clarity-esbmc/clara_github_action@v0.1.0-alpha
         with:
-          # Specify the package's contracts directory
-          contracts_dir: "./packages/${{ matrix.package }}/contracts"
+          # Dynamically set contracts directory based on found packages
+          contracts_dir: ${{ join(fromJSON('["packages/' + join(steps.find-packages.outputs.packages, '/contracts","packages/') + '/contracts"]'), ',') }}
+          fail_on_issue: "true"
+          container_version: "latest"
+          ast_container_repo: "saad963/esbmc-container"
+          esbmc_container_repo: "saad963/esbmc-container"
 
-          # Exclude test contracts
-          excluded_contracts: "./packages/${{ matrix.package }}/contracts/test/**/*.clar"
-
-          # Use explicit base and head refs for accurate diff detection
-          base_ref: ${{ github.event.pull_request.base.ref || 'HEAD~1' }}
-          head_ref: ${{ github.event.pull_request.head.ref || 'HEAD' }}
-
-          # GitHub token for API access
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      # Upload SARIF to GitHub Code Scanning if verification was run
       - name: Upload SARIF to GitHub Code Scanning
-        if: steps.check-changes.outputs.changes == 'true'
         uses: github/codeql-action/upload-sarif@v2
+        if: always() # Run even if verification fails
         with:
           sarif_file: ${{ steps.verify.outputs.sarif_report }}
-          category: ${{ matrix.package }}-clarity
 
-      # Add a summary for this package
-      - name: Add package summary
+      # Create summary report
+      - name: Create verification summary
+        if: always()
         run: |
-          echo "### ${{ matrix.package }} package" >> $GITHUB_STEP_SUMMARY
+          echo "# Clarity Contracts Verification Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "${{ steps.check-changes.outputs.changes }}" == "false" ]; then
-            echo "No Clarity contract changes detected." >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ steps.verify.outputs.verification_status }}" == "success" ]; then
-            echo "✅ All functions verified successfully." >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.verify.outputs.verification_status }}" == "success" ]; then
+            echo "✅ **All contracts verified successfully**" >> $GITHUB_STEP_SUMMARY
           elif [ "${{ steps.verify.outputs.verification_status }}" == "no_changes" ]; then
-            echo "ℹ️ No modified functions detected." >> $GITHUB_STEP_SUMMARY
+            echo "ℹ️ **No modified Clarity functions detected**" >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️ Verification issues detected. See SARIF report for details." >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Verification issues detected**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "See SARIF report for details." >> $GITHUB_STEP_SUMMARY
           fi

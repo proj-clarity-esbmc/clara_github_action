@@ -10,16 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Required to get full history for detecting changes
 
       - name: Verify Clarity Contracts
-        uses: companyx/clarity-verify-action@v1
+        id: verify
+        uses: proj-clarity-esbmc/clara_github_action@v0.1.0-alpha
         with:
           contracts_dir: "./contracts"
           fail_on_issue: "true"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload SARIF to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v2
