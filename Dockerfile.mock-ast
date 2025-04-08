@@ -1,0 +1,3 @@
+FROM alpine:latest
+COPY sample.clarast /tmp/
+ENTRYPOINT ["cp", "/tmp/sample.clarast", "/output/"]

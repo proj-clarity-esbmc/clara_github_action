@@ -1,0 +1,87 @@
+name: Advanced Clarity Verification
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "contracts/**/*.clar"
+      - "libs/**/*.clar"
+  push:
+    branches: [main]
+    paths:
+      - "contracts/**/*.clar"
+      - "libs/**/*.clar"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Required to get full history for detecting changes
+
+      - name: Verify Clarity Contracts
+        id: verify
+        uses: companyx/clarity-verify-action@v1
+        with:
+          # Multiple directories containing Clarity contracts
+          contracts_dir: "./contracts,./libs"
+
+          # Exclude test and example contracts
+          excluded_contracts: "contracts/test/**/*.clar,contracts/examples/*.clar"
+
+          # Additional ESBMC flags
+          esbmc_flags: "--verbose --timeout 300"
+
+          # Don't fail the workflow on verification issues
+          fail_on_issue: "false"
+
+          # Specify container version
+          container_version: "v1.0.0"
+
+          # Specify container repositories
+          ast_container_repo: "ghcr.io/companyx/clarity-ast-generator"
+          esbmc_container_repo: "ghcr.io/companyx/clarity-esbmc"
+
+          # GitHub token for API access
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v2
+        if: always() # Run even if verification fails
+        with:
+          sarif_file: ${{ steps.verify.outputs.sarif_report }}
+
+      # Store SARIF report as an artifact
+      - name: Archive SARIF report
+        uses: actions/upload-artifact@v3
+        with:
+          name: sarif-report
+          path: ${{ steps.verify.outputs.sarif_report }}
+          retention-days: 30
+
+      # Generate custom report based on verification status
+      - name: Generate verification report
+        if: always()
+        run: |
+          echo "# Clarity Verification Report" > verification-report.md
+          echo "Generated on: $(date)" >> verification-report.md
+          echo "" >> verification-report.md
+
+          if [ "${{ steps.verify.outputs.verification_status }}" == "success" ]; then
+            echo "## ✅ All functions verified successfully" >> verification-report.md
+          elif [ "${{ steps.verify.outputs.verification_status }}" == "no_changes" ]; then
+            echo "## ℹ️ No modified Clarity functions detected" >> verification-report.md
+          else
+            echo "## ⚠️ Verification issues detected" >> verification-report.md
+            echo "" >> verification-report.md
+            echo "See SARIF report for details." >> verification-report.md
+          fi
+
+      # Upload the verification report as an artifact
+      - name: Upload verification report
+        uses: actions/upload-artifact@v3
+        with:
+          name: verification-report
+          path: verification-report.md
+          retention-days: 30

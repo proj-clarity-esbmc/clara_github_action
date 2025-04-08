@@ -1,0 +1,28 @@
+name: Verify Clarity Contracts
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "**.clar"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Required to get full history for detecting changes
+
+      - name: Verify Clarity Contracts
+        uses: companyx/clarity-verify-action@v1
+        with:
+          contracts_dir: "./contracts"
+          fail_on_issue: "true"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v2
+        if: always() # Run even if verification fails
+        with:
+          sarif_file: ${{ steps.verify.outputs.sarif_report }}

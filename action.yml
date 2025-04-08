@@ -1,0 +1,62 @@
+name: "Clarity Smart Contract Verification"
+description: "Formally verify Clarity smart contracts using ESBMC, focusing only on modified functions in pull requests"
+author: "Company X"
+
+branding:
+  icon: "shield" # GitHub provides a set of icons to choose from
+  color: "blue" # Available colors: white, yellow, blue, green, orange, red, purple, gray-dark
+
+inputs:
+  contracts_dir:
+    description: "Directory containing Clarity smart contracts (comma or newline separated for multiple)"
+    required: false
+    default: "./"
+
+  esbmc_flags:
+    description: "Additional flags to pass to ESBMC"
+    required: false
+    default: "--verbose"
+
+  excluded_contracts:
+    description: "Contracts to exclude from verification (comma or newline separated)"
+    required: false
+    default: ""
+
+  fail_on_issue:
+    description: "Whether to fail the workflow if verification issues are found"
+    required: false
+    default: "true"
+
+  base_ref:
+    description: "Base Git reference for comparison (auto-detected in PR context)"
+    required: false
+
+  head_ref:
+    description: "Head Git reference for comparison (auto-detected in PR context)"
+    required: false
+
+  container_version:
+    description: "Version of the container images to use"
+    required: false
+    default: "v1.0.0"
+
+  ast_container_repo:
+    description: "Container repository for AST generator"
+    required: false
+    default: "ghcr.io/companyx/clarity-ast-generator"
+
+  esbmc_container_repo:
+    description: "Container repository for ESBMC"
+    required: false
+    default: "ghcr.io/companyx/clarity-esbmc"
+
+outputs:
+  sarif_report:
+    description: "Path to the generated SARIF report"
+
+  verification_status:
+    description: "Overall verification status (success, failure, no_changes)"
+
+runs:
+  using: "node16"
+  main: "dist/index.js"
