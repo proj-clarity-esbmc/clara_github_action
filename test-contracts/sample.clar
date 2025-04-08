@@ -25,6 +25,6 @@
 )
 
 ;; Read-only function to get the total balance
-(define-read-only (get-balance)
+(define-read-only (get-balance) ;; Modified function
    (ok (var-get total-deposits))
 )
