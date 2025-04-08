@@ -38,17 +38,17 @@ inputs:
   container_version:
     description: "Version of the container images to use"
     required: false
-    default: "v1.0.0"
+    default: "latest"
 
   ast_container_repo:
     description: "Container repository for AST generator"
     required: false
-    default: "ghcr.io/companyx/clarity-ast-generator"
+    default: "saad963/esbmc-container"
 
   esbmc_container_repo:
     description: "Container repository for ESBMC"
     required: false
-    default: "ghcr.io/companyx/clarity-esbmc"
+    default: "saad963/esbmc-container"
 
 outputs:
   sarif_report:
@@ -58,5 +58,5 @@ outputs:
     description: "Overall verification status (success, failure, no_changes)"
 
 runs:
-  using: "node16"
+  using: "node20"
   main: "dist/index.js"

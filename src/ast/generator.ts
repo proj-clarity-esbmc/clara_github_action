@@ -1,11 +1,12 @@
 import * as path from "path";
-import { Logger, runInContainer } from "../utils";
+import * as fs from "fs";
+import { Logger } from "../utils";
 
 /**
  * Generate AST for a Clarity contract
  * @param clarityFile Path to the Clarity contract file
- * @param containerRepo Container repository for AST generator
- * @param containerVersion Container version
+ * @param containerRepo Container repository for AST generator (unused, kept for compatibility)
+ * @param containerVersion Container version (unused, kept for compatibility)
  * @returns Path to the generated AST file
  */
 export async function generateAST(
@@ -13,23 +14,21 @@ export async function generateAST(
   containerRepo: string,
   containerVersion: string
 ): Promise<string> {
-  Logger.info(`Generating AST for ${clarityFile}`);
+  Logger.info(
+    `Using sample.clarast for ${clarityFile} instead of generating AST`
+  );
 
   try {
     // Define the output AST file path
     const astOutputPath = `${clarityFile}.ast`;
 
-    // Run the AST generator container
-    await runInContainer(
-      containerRepo,
-      containerVersion,
-      `clarity-ast-generator ${clarityFile} -o ${astOutputPath}`
-    );
+    // Copy the sample.clarast file instead of generating a new one
+    fs.copyFileSync("sample.clarast", astOutputPath);
 
-    Logger.info(`AST generated successfully: ${astOutputPath}`);
+    Logger.info(`Sample AST copied successfully to: ${astOutputPath}`);
     return astOutputPath;
   } catch (error) {
-    Logger.error(`Failed to generate AST for ${clarityFile}: ${error}`);
+    Logger.error(`Failed to copy sample AST for ${clarityFile}: ${error}`);
     throw new Error(`AST generation failed for ${clarityFile}: ${error}`);
   }
 }

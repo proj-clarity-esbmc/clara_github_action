@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "16"
+          node-version: "20"
           cache: "npm"
 
       - name: Install dependencies
@@ -44,7 +44,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "16"
+          node-version: "20"
           cache: "npm"
 
       - name: Install dependencies
@@ -75,3 +75,60 @@ jobs:
           MAJOR_VERSION=$(echo $VERSION | cut -d. -f1)
           git tag -f $MAJOR_VERSION
           git push -f origin $MAJOR_VERSION
+
+  create-release:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get latest version
+        id: get_version
+        run: |
+          # Get the latest tag or default to v0.0.0 if no tags exist
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+
+          # Extract version components
+          MAJOR=$(echo $LATEST_TAG | cut -d. -f1 | sed 's/v//')
+          MINOR=$(echo $LATEST_TAG | cut -d. -f2)
+          PATCH=$(echo $LATEST_TAG | cut -d. -f3)
+
+          # Increment patch version
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="v$MAJOR.$MINOR.$NEW_PATCH"
+
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version will be: $NEW_VERSION"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Get commit messages since last tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LATEST_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s" -n 10)
+          else
+            COMMITS=$(git log $LATEST_TAG..HEAD --pretty=format:"- %s")
+          fi
+
+          # Create release notes with commit messages
+          NOTES="## What's Changed\n\n$COMMITS\n\n## Full Commit History\n\nhttps://github.com/${{ github.repository }}/compare/$LATEST_TAG...${{ github.sha }}"
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+          echo -e "$NOTES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.new_version }}
+          release_name: Release ${{ steps.get_version.outputs.new_version }}
+          body: ${{ env.RELEASE_NOTES }}
+          draft: false
+          prerelease: false
