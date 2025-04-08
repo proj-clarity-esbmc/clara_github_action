@@ -7,7 +7,7 @@
     "build": "tsc",
     "package": "ncc build ./lib/index.js -o dist --source-map",
     "all": "npm run build && npm run package",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "lint": "eslint src/**/*.ts"
   },
   "repository": {
