@@ -130,7 +130,7 @@ export function findFiles(dir: string, pattern: string): string[] {
     const files: string[] = [];
     const regex = new RegExp(pattern.replace(".", "\\.").replace("*", ".*"));
 
-    function scanDir(currentDir: string) {
+    const scanDir = (currentDir: string): void => {
       const entries = fs.readdirSync(currentDir, { withFileTypes: true });
 
       for (const entry of entries) {
@@ -142,7 +142,7 @@ export function findFiles(dir: string, pattern: string): string[] {
           files.push(fullPath);
         }
       }
-    }
+    };
 
     scanDir(dir);
     return files;

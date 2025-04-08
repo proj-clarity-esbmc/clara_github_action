@@ -158,7 +158,7 @@ export function generateSARIF(esbmcResults: ESBMCResult[]): SARIFReport {
  */
 export function writeSARIFReport(
   sarifReport: SARIFReport,
-  outputPath: string = "results.sarif"
+  outputPath = "results.sarif"
 ): string {
   Logger.info(`Writing SARIF report to ${outputPath}`);
 
