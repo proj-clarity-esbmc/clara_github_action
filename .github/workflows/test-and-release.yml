@@ -8,15 +8,19 @@ on:
   release:
     types: [created]
 
+permissions:
+  contents: write
+  packages: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -33,16 +37,27 @@ jobs:
       - name: Test
         run: npm test
 
+      # Add a step to verify the action can be run
+      - name: Verify action packaging
+        run: |
+          echo "Verifying action packaging..."
+          if [ ! -f "dist/index.js" ]; then
+            echo "Error: dist/index.js not found. Run 'npm run all' to build the action."
+            exit 1
+          fi
+          echo "Action packaging verified successfully."
+
+  # Simplified package job that doesn't use upload-artifact
   package:
     needs: test
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -53,38 +68,48 @@ jobs:
       - name: Build and package
         run: npm run all
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: dist
-          path: dist/
+      # Instead of uploading artifacts, just verify they exist
+      - name: Verify dist directory
+        run: |
+          echo "Verifying dist directory..."
+          if [ ! -f "dist/index.js" ]; then
+            echo "Error: dist/index.js not found after build."
+            exit 1
+          fi
+          echo "Dist directory verified successfully."
 
+  # Simplified tag update job
   update-major-version-tag:
     needs: package
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update major version tag
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
           MAJOR_VERSION=$(echo $VERSION | cut -d. -f1)
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
           git tag -f $MAJOR_VERSION
           git push -f origin $MAJOR_VERSION
 
+  # Use GitHub's built-in release creation instead of actions/create-release
   create-release:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get latest version
         id: get_version
@@ -118,17 +143,29 @@ jobs:
 
           # Create release notes with commit messages
           NOTES="## What's Changed\n\n$COMMITS\n\n## Full Commit History\n\nhttps://github.com/${{ github.repository }}/compare/$LATEST_TAG...${{ github.sha }}"
-          echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+          echo "NOTES<<EOF" >> $GITHUB_ENV
           echo -e "$NOTES" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
+      # Build the action before creating the release
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and package
+        run: npm run all
+
+      # Use GitHub CLI to create release instead of deprecated action
       - name: Create Release
-        uses: actions/create-release@v1
+        run: |
+          gh release create ${{ steps.get_version.outputs.new_version }} \
+            --title "Alpha Release ${{ steps.get_version.outputs.new_version }}" \
+            --notes "${{ env.NOTES }}" \
+            --prerelease
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.get_version.outputs.new_version }}
-          release_name: Alpha Release ${{ steps.get_version.outputs.new_version }}
-          body: ${{ env.RELEASE_NOTES }}
-          draft: false
-          prerelease: true

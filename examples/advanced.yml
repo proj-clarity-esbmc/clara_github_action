@@ -16,13 +16,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Required to get full history for detecting changes
 
       - name: Verify Clarity Contracts
         id: verify
-        uses: companyx/clarity-verify-action@v1
+        uses: proj-clarity-esbmc/clara_github_action@v0.1.0-alpha
         with:
           # Multiple directories containing Clarity contracts
           contracts_dir: "./contracts,./libs"
@@ -37,14 +37,11 @@ jobs:
           fail_on_issue: "false"
 
           # Specify container version
-          container_version: "v1.0.0"
+          container_version: "latest"
 
           # Specify container repositories
-          ast_container_repo: "ghcr.io/companyx/clarity-ast-generator"
-          esbmc_container_repo: "ghcr.io/companyx/clarity-esbmc"
-
-          # GitHub token for API access
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          ast_container_repo: "saad963/esbmc-container"
+          esbmc_container_repo: "saad963/esbmc-container"
 
       - name: Upload SARIF to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v2
@@ -54,7 +51,7 @@ jobs:
 
       # Store SARIF report as an artifact
       - name: Archive SARIF report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sarif-report
           path: ${{ steps.verify.outputs.sarif_report }}
@@ -80,7 +77,7 @@ jobs:
 
       # Upload the verification report as an artifact
       - name: Upload verification report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: verification-report
           path: verification-report.md
