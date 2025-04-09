@@ -22,7 +22,7 @@ jobs:
           fail_on_issue: "true"
 
       - name: Upload SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v2
-        if: always() # Run even if verification fails
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && steps.verify.outputs.sarif_report != ''
         with:
           sarif_file: ${{ steps.verify.outputs.sarif_report }}
