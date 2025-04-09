@@ -21,8 +21,15 @@ export async function generateAST(
   );
 
   try {
-    // Define the output AST file path
-    const astOutputPath = `${clarityFile}.ast`;
+    // Define the output AST file path with the correct extension
+    const astOutputPath = clarityFile.replace(".clar", ".clarast");
+
+    // Make sure the directory exists
+    const astOutputDir = path.dirname(astOutputPath);
+    if (!fs.existsSync(astOutputDir)) {
+      fs.mkdirSync(astOutputDir, { recursive: true });
+      Logger.info(`Created directory: ${astOutputDir}`);
+    }
 
     // Copy the sample.clarast file instead of generating a new one
     fs.copyFileSync("sample.clarast", astOutputPath);

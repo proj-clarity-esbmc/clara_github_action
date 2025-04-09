@@ -60,8 +60,14 @@ containerRepo,
 containerVersion) {
     utils_1.Logger.info(`Using sample.clarast for ${clarityFile} instead of generating AST`);
     try {
-        // Define the output AST file path
-        const astOutputPath = `${clarityFile}.ast`;
+        // Define the output AST file path with the correct extension
+        const astOutputPath = clarityFile.replace(".clar", ".clarast");
+        // Make sure the directory exists
+        const astOutputDir = path.dirname(astOutputPath);
+        if (!fs.existsSync(astOutputDir)) {
+            fs.mkdirSync(astOutputDir, { recursive: true });
+            utils_1.Logger.info(`Created directory: ${astOutputDir}`);
+        }
         // Copy the sample.clarast file instead of generating a new one
         fs.copyFileSync("sample.clarast", astOutputPath);
         utils_1.Logger.info(`Sample AST copied successfully to: ${astOutputPath}`);
@@ -1114,7 +1120,7 @@ function defineRules() {
             shortDescription: {
                 text: "Assertion failure in Clarity contract",
             },
-            helpText: {
+            help: {
                 text: "An assertion in the Clarity contract failed during formal verification.",
             },
         },
@@ -1123,7 +1129,7 @@ function defineRules() {
             shortDescription: {
                 text: "Arithmetic overflow in Clarity contract",
             },
-            helpText: {
+            help: {
                 text: "An arithmetic operation in the Clarity contract may cause an overflow.",
             },
         },
@@ -1132,7 +1138,7 @@ function defineRules() {
             shortDescription: {
                 text: "Arithmetic underflow in Clarity contract",
             },
-            helpText: {
+            help: {
                 text: "An arithmetic operation in the Clarity contract may cause an underflow.",
             },
         },
@@ -1141,7 +1147,7 @@ function defineRules() {
             shortDescription: {
                 text: "Division by zero in Clarity contract",
             },
-            helpText: {
+            help: {
                 text: "A division operation in the Clarity contract may cause a division by zero.",
             },
         },
@@ -1150,7 +1156,7 @@ function defineRules() {
             shortDescription: {
                 text: "Execution error in Clarity contract",
             },
-            helpText: {
+            help: {
                 text: "An error occurred during the execution of the Clarity contract.",
             },
         },
@@ -1159,7 +1165,7 @@ function defineRules() {
             shortDescription: {
                 text: "Unknown error in Clarity contract",
             },
-            helpText: {
+            help: {
                 text: "An unknown error occurred during the verification of the Clarity contract.",
             },
         },

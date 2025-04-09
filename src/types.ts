@@ -88,7 +88,7 @@ export interface SARIFRule {
   shortDescription: {
     text: string;
   };
-  helpText?: {
+  help?: {
     text: string;
   };
 }
