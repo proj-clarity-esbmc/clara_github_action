@@ -13,7 +13,7 @@ function defineRules(): SARIFRule[] {
       shortDescription: {
         text: "Assertion failure in Clarity contract",
       },
-      helpText: {
+      help: {
         text: "An assertion in the Clarity contract failed during formal verification.",
       },
     },
@@ -22,7 +22,7 @@ function defineRules(): SARIFRule[] {
       shortDescription: {
         text: "Arithmetic overflow in Clarity contract",
       },
-      helpText: {
+      help: {
         text: "An arithmetic operation in the Clarity contract may cause an overflow.",
       },
     },
@@ -31,7 +31,7 @@ function defineRules(): SARIFRule[] {
       shortDescription: {
         text: "Arithmetic underflow in Clarity contract",
       },
-      helpText: {
+      help: {
         text: "An arithmetic operation in the Clarity contract may cause an underflow.",
       },
     },
@@ -40,7 +40,7 @@ function defineRules(): SARIFRule[] {
       shortDescription: {
         text: "Division by zero in Clarity contract",
       },
-      helpText: {
+      help: {
         text: "A division operation in the Clarity contract may cause a division by zero.",
       },
     },
@@ -49,7 +49,7 @@ function defineRules(): SARIFRule[] {
       shortDescription: {
         text: "Execution error in Clarity contract",
       },
-      helpText: {
+      help: {
         text: "An error occurred during the execution of the Clarity contract.",
       },
     },
@@ -58,7 +58,7 @@ function defineRules(): SARIFRule[] {
       shortDescription: {
         text: "Unknown error in Clarity contract",
       },
-      helpText: {
+      help: {
         text: "An unknown error occurred during the verification of the Clarity contract.",
       },
     },
