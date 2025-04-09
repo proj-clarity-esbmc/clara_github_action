@@ -1,7 +1,7 @@
 import * as path from "path";
 import { exec } from "@actions/exec";
 import { ClarityFunction, ChangedFunction } from "../types";
-import { Logger, readFile } from "../utils";
+import { Logger } from "../utils";
 
 /**
  * Get the content of a file at a specific Git reference
@@ -91,8 +91,13 @@ export async function checkGitRefExists(gitRef: string): Promise<boolean> {
     let exitCode = 0;
     const options = {
       listeners: {
-        stdout: (_: Buffer) => {},
-        stderr: (_: Buffer) => {},
+        // Use noop function instead of empty arrow function
+        stdout: () => {
+          // Intentionally empty - we don't need the output
+        },
+        stderr: () => {
+          // Intentionally empty - we don't need the error output
+        },
       },
       ignoreReturnCode: true,
       silent: true,
@@ -301,9 +306,11 @@ export function parseClarityFunctions(
         functionContent = line;
 
         // Count additional opening parentheses in the current line
-        for (let j = match.index! + 1; j < line.length; j++) {
-          if (line[j] === "(") openParens++;
-          if (line[j] === ")") openParens--;
+        if (match.index !== undefined) {
+          for (let j = match.index + 1; j < line.length; j++) {
+            if (line[j] === "(") openParens++;
+            if (line[j] === ")") openParens--;
+          }
         }
 
         // If function definition is complete in a single line

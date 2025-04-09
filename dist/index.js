@@ -53,7 +53,11 @@ const utils_1 = __nccwpck_require__(1606);
  * @param containerVersion Container version (unused, kept for compatibility)
  * @returns Path to the generated AST file
  */
-async function generateAST(clarityFile, containerRepo, containerVersion) {
+async function generateAST(clarityFile, 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+containerRepo, 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+containerVersion) {
     utils_1.Logger.info(`Using sample.clarast for ${clarityFile} instead of generating AST`);
     try {
         // Define the output AST file path
@@ -368,7 +372,9 @@ const converter_1 = __nccwpck_require__(4431);
  * @param changedFunctions Map of files to changed functions
  * @returns True if comment was posted successfully
  */
-async function postPRComment(esbmcResults, changedFunctions) {
+async function postPRComment(esbmcResults, 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+changedFunctions) {
     try {
         // Check if we're in a PR context
         const context = github.context;
@@ -759,8 +765,13 @@ async function checkGitRefExists(gitRef) {
         let exitCode = 0;
         const options = {
             listeners: {
-                stdout: (_) => { },
-                stderr: (_) => { },
+                // Use noop function instead of empty arrow function
+                stdout: () => {
+                    // Intentionally empty - we don't need the output
+                },
+                stderr: () => {
+                    // Intentionally empty - we don't need the error output
+                },
             },
             ignoreReturnCode: true,
             silent: true,
@@ -912,11 +923,13 @@ function parseClarityFunctions(content, filePath) {
                 };
                 functionContent = line;
                 // Count additional opening parentheses in the current line
-                for (let j = match.index + 1; j < line.length; j++) {
-                    if (line[j] === "(")
-                        openParens++;
-                    if (line[j] === ")")
-                        openParens--;
+                if (match.index !== undefined) {
+                    for (let j = match.index + 1; j < line.length; j++) {
+                        if (line[j] === "(")
+                            openParens++;
+                        if (line[j] === ")")
+                            openParens--;
+                    }
                 }
                 // If function definition is complete in a single line
                 if (openParens === 0) {

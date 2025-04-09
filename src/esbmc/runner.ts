@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import * as path from "path";
 import { ESBMCResult, FailureDetails } from "../types";
 import { Logger, runInContainer, isFillerLine } from "../utils";

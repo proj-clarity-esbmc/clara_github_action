@@ -6,9 +6,10 @@
   "scripts": {
     "build": "tsc",
     "package": "ncc build ./lib/index.js -o dist --source-map",
-    "all": "npm run build && npm run package",
+    "all": "npm run lint && npm run build && npm run package",
     "test": "jest --passWithNoTests",
-    "lint": "eslint src/**/*.ts"
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint --fix src/**/*.ts"
   },
   "repository": {
     "type": "git",
