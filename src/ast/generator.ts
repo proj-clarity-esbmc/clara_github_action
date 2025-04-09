@@ -11,7 +11,9 @@ import { Logger } from "../utils";
  */
 export async function generateAST(
   clarityFile: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   containerRepo: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   containerVersion: string
 ): Promise<string> {
   Logger.info(

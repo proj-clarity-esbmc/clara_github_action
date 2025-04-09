@@ -53,7 +53,11 @@ const utils_1 = __nccwpck_require__(1606);
  * @param containerVersion Container version (unused, kept for compatibility)
  * @returns Path to the generated AST file
  */
-async function generateAST(clarityFile, containerRepo, containerVersion) {
+async function generateAST(clarityFile, 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+containerRepo, 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+containerVersion) {
     utils_1.Logger.info(`Using sample.clarast for ${clarityFile} instead of generating AST`);
     try {
         // Define the output AST file path
@@ -368,7 +372,9 @@ const converter_1 = __nccwpck_require__(4431);
  * @param changedFunctions Map of files to changed functions
  * @returns True if comment was posted successfully
  */
-async function postPRComment(esbmcResults, changedFunctions) {
+async function postPRComment(esbmcResults, 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+changedFunctions) {
     try {
         // Check if we're in a PR context
         const context = github.context;
@@ -681,6 +687,8 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getFileContent = getFileContent;
+exports.checkGitRefExists = checkGitRefExists;
+exports.fetchGitRefIfNeeded = fetchGitRefIfNeeded;
 exports.getModifiedFiles = getModifiedFiles;
 exports.parseClarityFunctions = parseClarityFunctions;
 exports.compareAndIdentifyChanges = compareAndIdentifyChanges;
@@ -697,19 +705,119 @@ const utils_1 = __nccwpck_require__(1606);
 async function getFileContent(gitRef, filePath) {
     let content = "";
     try {
+        // Ensure the git reference exists
+        await fetchGitRefIfNeeded(gitRef);
         const options = {
             listeners: {
                 stdout: (data) => {
                     content += data.toString();
                 },
+                stderr: (data) => {
+                    utils_1.Logger.debug(`Git show stderr: ${data.toString()}`);
+                },
             },
+            ignoreReturnCode: true,
+            silent: true,
         };
-        await (0, exec_1.exec)("git", ["show", `${gitRef}:${filePath}`], options);
+        // Try different approaches to get the file content
+        let exitCode = 0;
+        // First try: direct show
+        exitCode = await (0, exec_1.exec)("git", ["show", `${gitRef}:${filePath}`], options);
+        // If that fails, try with origin/ prefix
+        if (exitCode !== 0 && content === "") {
+            content = ""; // Clear previous output
+            exitCode = await (0, exec_1.exec)("git", ["show", `origin/${gitRef}:${filePath}`], options);
+        }
+        // If that still fails, try cat-file
+        if (exitCode !== 0 && content === "") {
+            content = ""; // Clear previous output
+            // First get the object hash
+            let objectHash = "";
+            const hashOptions = {
+                listeners: {
+                    stdout: (data) => {
+                        objectHash += data.toString().trim();
+                    },
+                },
+                ignoreReturnCode: true,
+                silent: true,
+            };
+            await (0, exec_1.exec)("git", ["rev-parse", `${gitRef}:${filePath}`], hashOptions);
+            if (objectHash) {
+                // Then cat the file using the hash
+                exitCode = await (0, exec_1.exec)("git", ["cat-file", "-p", objectHash], options);
+            }
+        }
         return content;
     }
     catch (error) {
         utils_1.Logger.warning(`Failed to get content for ${filePath} at ${gitRef}: ${error}`);
         return "";
+    }
+}
+/**
+ * Check if a Git reference exists
+ * @param gitRef Git reference to check
+ * @returns True if the reference exists
+ */
+async function checkGitRefExists(gitRef) {
+    try {
+        let exitCode = 0;
+        const options = {
+            listeners: {
+                // Use noop function instead of empty arrow function
+                stdout: () => {
+                    // Intentionally empty - we don't need the output
+                },
+                stderr: () => {
+                    // Intentionally empty - we don't need the error output
+                },
+            },
+            ignoreReturnCode: true,
+            silent: true,
+        };
+        exitCode = await (0, exec_1.exec)("git", ["rev-parse", "--verify", gitRef], options);
+        return exitCode === 0;
+    }
+    catch (error) {
+        return false;
+    }
+}
+/**
+ * Fetch a Git reference if it doesn't exist
+ * @param gitRef Git reference to fetch
+ * @returns True if the reference exists or was successfully fetched
+ */
+async function fetchGitRefIfNeeded(gitRef) {
+    // Check if the reference already exists
+    if (await checkGitRefExists(gitRef)) {
+        return true;
+    }
+    utils_1.Logger.info(`Git reference '${gitRef}' not found locally, attempting to fetch...`);
+    try {
+        // Try to fetch the reference from origin
+        const options = {
+            silent: true,
+            ignoreReturnCode: true,
+        };
+        const exitCode = await (0, exec_1.exec)("git", ["fetch", "origin", gitRef], options);
+        if (exitCode === 0) {
+            utils_1.Logger.info(`Successfully fetched '${gitRef}'`);
+            return true;
+        }
+        // If direct fetch failed, try fetching all
+        utils_1.Logger.info(`Failed to fetch '${gitRef}' directly, trying to fetch all refs...`);
+        const fetchAllExitCode = await (0, exec_1.exec)("git", ["fetch", "--all"], options);
+        if (fetchAllExitCode === 0 && (await checkGitRefExists(gitRef))) {
+            utils_1.Logger.info(`Successfully fetched '${gitRef}' after fetching all refs`);
+            return true;
+        }
+        utils_1.Logger.warning(`Failed to fetch '${gitRef}', will try to continue anyway`);
+        return false;
+    }
+    catch (error) {
+        utils_1.Logger.warning(`Error fetching '${gitRef}': ${error}`);
+        return false;
     }
 }
 /**
@@ -722,15 +830,47 @@ async function getFileContent(gitRef, filePath) {
 async function getModifiedFiles(baseRef, headRef, contractsDir) {
     let output = "";
     try {
+        // Ensure both refs exist
+        const baseExists = await fetchGitRefIfNeeded(baseRef);
+        const headExists = await fetchGitRefIfNeeded(headRef);
+        if (!baseExists || !headExists) {
+            utils_1.Logger.warning(`One or both Git references not available: baseRef=${baseRef}, headRef=${headRef}`);
+            utils_1.Logger.warning("Will attempt to continue, but may not detect all changes correctly");
+        }
         const options = {
             listeners: {
                 stdout: (data) => {
                     output += data.toString();
                 },
+                stderr: (data) => {
+                    utils_1.Logger.debug(`Git diff stderr: ${data.toString()}`);
+                },
             },
+            ignoreReturnCode: true,
+            silent: true,
         };
-        // Get diff between base and head
-        await (0, exec_1.exec)("git", ["diff", "--name-only", baseRef, headRef], options);
+        // Try different approaches to get the diff
+        let exitCode = 0;
+        // First try: direct diff between refs
+        utils_1.Logger.info(`Running git diff --name-only ${baseRef} ${headRef}`);
+        exitCode = await (0, exec_1.exec)("git", ["diff", "--name-only", baseRef, headRef], options);
+        // If that fails, try with origin/ prefix
+        if (exitCode !== 0 && output === "") {
+            utils_1.Logger.info(`Direct diff failed, trying with origin/ prefix`);
+            output = ""; // Clear previous output
+            exitCode = await (0, exec_1.exec)("git", ["diff", "--name-only", `origin/${baseRef}`, `origin/${headRef}`], options);
+        }
+        // If that still fails, try with -- separator
+        if (exitCode !== 0 && output === "") {
+            utils_1.Logger.info(`Diff with origin/ prefix failed, trying with -- separator`);
+            output = ""; // Clear previous output
+            exitCode = await (0, exec_1.exec)("git", ["diff", "--name-only", baseRef, headRef, "--"], options);
+        }
+        // If all diff attempts failed, log warning but continue with empty list
+        if (exitCode !== 0 && output === "") {
+            utils_1.Logger.warning(`All git diff attempts failed, no modified files detected`);
+            return [];
+        }
         // Filter files by directory and extension
         const files = output
             .split("\n")
@@ -743,6 +883,7 @@ async function getModifiedFiles(baseRef, headRef, contractsDir) {
                 return (!relativePath.startsWith("..") && !path.isAbsolute(relativePath));
             });
         });
+        utils_1.Logger.info(`Found ${files.length} modified .clar files`);
         return files;
     }
     catch (error) {
@@ -782,11 +923,13 @@ function parseClarityFunctions(content, filePath) {
                 };
                 functionContent = line;
                 // Count additional opening parentheses in the current line
-                for (let j = match.index + 1; j < line.length; j++) {
-                    if (line[j] === "(")
-                        openParens++;
-                    if (line[j] === ")")
-                        openParens--;
+                if (match.index !== undefined) {
+                    for (let j = match.index + 1; j < line.length; j++) {
+                        if (line[j] === "(")
+                            openParens++;
+                        if (line[j] === ")")
+                            openParens--;
+                    }
                 }
                 // If function definition is complete in a single line
                 if (openParens === 0) {

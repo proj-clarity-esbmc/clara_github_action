@@ -13,6 +13,7 @@ import { generateSummary } from "../sarif/converter";
  */
 export async function postPRComment(
   esbmcResults: ESBMCResult[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   changedFunctions: Map<string, string[]>
 ): Promise<boolean> {
   try {

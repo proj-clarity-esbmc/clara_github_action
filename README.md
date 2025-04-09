@@ -37,8 +37,8 @@ jobs:
           fail_on_issue: "true"
 
       - name: Upload SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v2
-        if: always() # Run even if verification fails
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && steps.verify.outputs.sarif_report != ''
         with:
           sarif_file: ${{ steps.verify.outputs.sarif_report }}
 ```
@@ -68,6 +68,24 @@ jobs:
 
 - GitHub Actions runner with Docker support
 - Access to the container images (public Docker Hub images)
+- Git repository with proper history (for detecting changed functions)
+
+## Git Access and Branch Comparison
+
+This action compares branches to detect which functions have changed. To ensure proper operation:
+
+1. Use `actions/checkout@v4` with `fetch-depth: 0` to get full history
+2. For pull requests, the action will automatically detect base and head branches
+3. For direct pushes, you can specify `base_ref` and `head_ref` inputs
+
+Example checkout configuration:
+
+```yaml
+- name: Checkout code
+  uses: actions/checkout@v4
+  with:
+    fetch-depth: 0 # Required for proper branch comparison
+```
 
 ## License
 
